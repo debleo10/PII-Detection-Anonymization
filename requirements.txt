@@ -1,0 +1,5 @@
+spacy
+faker
+pycountry
+Flask
+presidio-analyzer

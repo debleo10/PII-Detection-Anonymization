@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>NER Application</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma/css/bulma.min.css">
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+  <style>
+    /* Apply a subtle gradient background to the entire page */
+    body {
+      font-family: 'Helvetica Neue', Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #f3f4f6; /* Light grayish background */
+      color: #000; /* Set text color to black for clarity */
+    }
+
+    /* Center the main container and give it a card-like appearance */
+    .container {
+      max-width: 900px;
+      margin: 50px auto;
+      background-color: #ffffff;
+      padding: 30px;
+      border-radius: 12px; /* Rounded corners */
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Soft shadow */
+      border-top: 6px solid #6c757d; /* Neutral accent border */
+    }
+
+    /* Style the main title with a sophisticated font and black color */
+    .title.is-2 {
+      color: #000; /* Black text for the title */
+      font-size: 2.5rem;
+      font-weight: 800; /* Thicker and bold */
+      text-align: left; /* Align to the left */
+      margin-bottom: 20px;
+      text-transform: uppercase; /* Capitalize for a formal look */
+      letter-spacing: 2px; /* Spacing between letters */
+      font-family: 'Helvetica Neue', Arial, sans-serif; /* Fallback font */
+    }
+
+    /* Style the smaller titles */
+    .title.is-4 {
+      color: #000; /* Black text for smaller titles */
+      text-align: center;
+      margin-top: 30px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    /* Style for textarea input */
+    textarea {
+      width: 100%;
+      padding: 15px;
+      font-size: 16px;
+      margin-bottom: 20px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      background-color: #f7f9fc;
+      transition: box-shadow 0.3s ease-in-out;
+    }
+
+    /* Add focus effect to textarea */
+    textarea:focus {
+      box-shadow: 0 0 10px rgba(108, 117, 125, 0.4); /* Subtle shadow on focus */
+      outline: none; /* Remove default outline */
+    }
+
+    /* Style for submit button */
+    input[type="submit"] {
+      padding: 10px 20px;
+      font-size: 16px;
+      background-color: #007bff; /* Blue color for the Analyze button */
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+
+    /* Hover effect for submit button */
+    input[type="submit"]:hover {
+      background-color: #0056b3; /* Darker shade of blue on hover */
+    }
+
+    /* Style the table */
+    table {
+      width: 100%;
+      margin-top: 20px;
+      border-collapse: collapse;
+    }
+
+    /* Style for table headers */
+    th, td {
+      padding: 10px;
+      text-align: left;
+      border-bottom: 1px solid #ddd;
+    }
+
+    th {
+      background-color: #f0f4f8; /* Light background for headers */
+      font-weight: bold;
+      text-align: center;
+    }
+
+    /* Style for clickable anonymize button */
+    .anonymize-button {
+      cursor: pointer;
+      color: #8b4513; /* Brown color for anonymize button text */
+      text-decoration: underline;
+      text-align: center;
+    }
+
+    /* Hover effect for anonymize button */
+    .anonymize-button:hover {
+      color: #5a3529; /* Darker brown on hover */
+    }
+
+    /* Style for text paragraphs */
+    p {
+      background-color: #f7f9fc; /* Light background */
+      padding: 15px;
+      border-radius: 6px;
+      border: 1px solid #ddd;
+      font-size: 16px;
+      line-height: 1.5; /* Comfortable line spacing */
+    }
+
+    /* Center text in p elements */
+    #original-text, #anonymized-text {
+      text-align: justify; /* Justify the text for better readability */
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2 class="title is-2">PII DATA EXTRACTION(NER)</h2>
+    <form method="POST">
+      <textarea name="text" rows="6" placeholder="Enter text here...">{{ text }}</textarea><br>
+      <input type="submit" value="Analyze" class="button is-primary">
+    </form>
+
+    {% if entities %}
+    <h2 class="title is-4">Detected Entities</h2>
+    <table class="table is-striped is-bordered">
+      <thead>
+        <tr>
+          <th>Entity Text</th>
+          <th>Label</th>
+          <th>Anonymized Data</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for entity in entities %}
+        <tr>
+          <td>{{ entity[0] }}</td>
+          <td>{{ entity[1] }}</td>
+          <td>
+            <span class="anonymize-button" data-id="entity-{{ loop.index }}" data-text="{{ entity[0] }}" data-label="{{ entity[1] }}">
+              Click to anonymize
+            </span>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <h2 class="title is-4">Original Text</h2>
+    <p id="original-text">{{ text }}</p>
+
+    <h2 class="title is-4">Anonymized Text</h2>
+    <p id="anonymized-text">{{ text }}</p>
+    {% endif %}
+  </div>
+
+<script>
+    $(document).ready(function() {
+        $(".anonymize-button").click(function() {
+            var entityId = $(this).data("id");
+            var entityText = $(this).data("text");
+            var label = $(this).data("label");
+
+            $.ajax({
+                url: "/anonymize",
+                method: "POST",
+                data: JSON.stringify({ "text": entityText, "label": label }),
+                contentType: "application/json",
+                success: function(response) {
+                    var anonymizedData = response.anonymized_data;
+
+                    // Update the anonymized data in the table
+                    $(`[data-id="${entityId}"]`).text(anonymizedData);
+
+                    // Escape special characters in entityText for use in RegExp
+                    var escapedEntityText = entityText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+                    // Construct the regex for replacing the entity text
+                    var regex = new RegExp(escapedEntityText, 'g');
+
+                    // Replace all occurrences of the entity in the anonymized text
+                    var originalText = $("#anonymized-text").text();
+                    var updatedText = originalText.replace(regex, anonymizedData);
+
+                    // Update the anonymized text on the page
+                    $("#anonymized-text").text(updatedText);
+                }
+            });
+        });
+    });
+</script>
+
+</body>
+</html>
